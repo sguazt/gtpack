@@ -1,5 +1,5 @@
 /**
- * \file dcs/gt/cooperative.hpp
+ * \file gtpack/cooperative.hpp
  *
  * \brief Cooperative games.
  *
@@ -22,8 +22,8 @@
  * limitations under the License.
  */
 
-#ifndef DCS_GT_COOPERATIVE_HPP
-#define DCS_GT_COOPERATIVE_HPP
+#ifndef GTPACK_COOPERATIVE_HPP
+#define GTPACK_COOPERATIVE_HPP
 
 
 #include <boost/dynamic_bitset.hpp>
@@ -49,7 +49,7 @@
 #include <stdexcept>
 
 
-namespace dcs { namespace gt {
+namespace gtpack {
 
 typedef unsigned int player_type;
 typedef unsigned long cid_type;
@@ -1039,7 +1039,7 @@ bool belongs_to_core(cooperative_game<RealT> const& game, IterT first_payoff, It
 	return true;
 }
 
-}} // Namespace dcs::gt
+} // Namespace gtpack
 
 
-#endif // DCS_GT_COOPERATIVE_HPP
+#endif // GTPACK_COOPERATIVE_HPP
