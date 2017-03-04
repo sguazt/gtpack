@@ -865,7 +865,7 @@ core<RealT> find_core(cooperative_game<RealT> const& game)
 				lhs += x[player_num];
 			}
 			IloConstraint cons;
-			if (lex_subset.size() == n)
+			if (players_subset.size() == n)
 			{
 				cons = IloConstraint(lhs == IloNum(v_cid));
 			}
