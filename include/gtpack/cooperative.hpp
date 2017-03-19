@@ -51,7 +51,8 @@
 
 namespace gtpack {
 
-typedef unsigned int player_type;
+typedef unsigned int pid_type;
+typedef pid_type player_type; // Deprecated
 typedef unsigned long cid_type;
 
 
@@ -95,7 +96,44 @@ struct characteristic_function
 }; // characteristic_function
 
 template <typename RealT>
-class explicit_characteristic_function: public characteristic_function<RealT>
+class enumerated_characteristic_function: public characteristic_function<RealT>
+{
+	public: typedef RealT real_type;
+
+
+	public: enumerated_characteristic_function()
+	{
+	}
+
+	public: template <typename CidValIterT>
+			enumerated_characteristic_function(CidValIterT first, CidValIterT last)
+	: map_(first, last)
+	{
+	}
+
+	private: real_type do_get(cid_type cid) const
+	{
+		return map_.count(cid) > 0 ? map_.at(cid) : ::std::numeric_limits<real_type>::quiet_NaN();
+	}
+
+	private: void do_set(cid_type cid, real_type v)
+	{
+		map_[cid] = v;
+	}
+
+//	private: real_type& do_get(cid_type cid)
+//	{
+//		return map_[cid];
+//	}
+
+
+	private: ::std::map<cid_type,real_type> map_;
+}; // enumerated_characteristic_function
+
+
+template <typename RealT>
+class explicit_characteristic_function: public enumerated_characteristic_function<RealT> { };
+/*
 {
 	public: typedef RealT real_type;
 
@@ -128,6 +166,7 @@ class explicit_characteristic_function: public characteristic_function<RealT>
 
 	private: ::std::map<cid_type,real_type> map_;
 }; // explicit_characteristic_function
+*/
 
 
 template <typename RealT>
@@ -211,12 +250,12 @@ class players_coalition
 		return n_;
 	}
 
-	public: bool has_player(player_type player) const
+	public: bool has_player(pid_type player) const
 	{
 		return players_bs_.test(player);
 	}
 
-	public: ::std::vector<player_type> players() const
+	public: ::std::vector<pid_type> players() const
 	{
 		return players_;
 	}
@@ -256,7 +295,7 @@ class players_coalition
 
 	//private: ::std::bitset<8*sizeof(cid_type)> players_;
 	private: cid_type id_;
-	private: ::std::vector<player_type> players_;
+	private: ::std::vector<pid_type> players_;
 	private: bitset_container players_bs_;
 	private: ::std::size_t n_;
 	private: RealT v_;
@@ -268,7 +307,7 @@ template <typename CharT,
 		  typename RealT>
 ::std::basic_ostream<CharT,CharTraitsT>& operator<<(::std::basic_ostream<CharT,CharTraitsT>& os, players_coalition<RealT> const& coalition)
 {
-	typedef ::std::vector<player_type> player_container;
+	typedef ::std::vector<pid_type> player_container;
 	typedef typename player_container::const_iterator player_iterator;
 
 	bool first(true);
@@ -309,7 +348,7 @@ class cooperative_game
 	: n_(n),
 	  p_v_(p_v)
 	{
-		for (player_type i = 0; i < n_; ++i)
+		for (pid_type i = 0; i < n_; ++i)
 		{
 			players_.insert(i);
 		}
@@ -335,9 +374,9 @@ class cooperative_game
 		return n_;
 	}
 
-	public: ::std::vector<player_type> players() const
+	public: ::std::vector<pid_type> players() const
 	{
-		return ::std::vector<player_type>(players_.begin(), players_.end());
+		return ::std::vector<pid_type>(players_.begin(), players_.end());
 	}
 
 	public: real_type value(cid_type cid) const
@@ -396,7 +435,7 @@ class cooperative_game
 
 	public: cooperative_game<real_type> subgame(cid_type cid) const
 	{
-		const ::std::vector<player_type> players = this->coalition(n_, cid).players();
+		const ::std::vector<pid_type> players = this->coalition(n_, cid).players();
 
 		return this->subgame(players.begin(), players.end());
 	}
@@ -405,7 +444,7 @@ class cooperative_game
 	private: ::std::size_t n_; ///< Number of players
 	//private: ::boost::function<real_type (cid_type)> p_v_; ///< Pointer to the characteristic function
 	private: ::boost::shared_ptr< characteristic_function<real_type> > p_v_; ///< Pointer to the characteristic function
-	private: ::std::set<player_type> players_; ///< The set of players
+	private: ::std::set<pid_type> players_; ///< The set of players
 	private: ::std::set<cid_type> coal_struc_; ///< The set of coalition ID making the coalition structure for this game
 }; // cooperative_game
 
@@ -454,13 +493,13 @@ class core
  * \f]
  */
 template <typename RealT>
-RealT shapley_value(cooperative_game<RealT> const& game, player_type player)
+RealT shapley_value(cooperative_game<RealT> const& game, pid_type player)
 {
 	const ::std::size_t n(game.num_players());
 	const RealT n_fact(::boost::math::factorial<RealT>(n));
 
-	::std::vector<player_type> players(game.players());
-	::std::set<player_type> other_players(players.begin(), players.end());
+	::std::vector<pid_type> players(game.players());
+	::std::set<pid_type> other_players(players.begin(), players.end());
 	players.clear();
 	other_players.erase(player);
 
@@ -475,7 +514,7 @@ RealT shapley_value(cooperative_game<RealT> const& game, player_type player)
 			RealT s_fact(::boost::math::factorial<RealT>(s));
 			RealT nmsm1_fact(::boost::math::factorial<RealT>(n-s-1));
 
-			::std::vector<player_type> tmp_players(subset(other_players.begin(), other_players.end()));
+			::std::vector<pid_type> tmp_players(subset(other_players.begin(), other_players.end()));
 			cid_type s_cid = players_coalition<RealT>::make_id(tmp_players.begin(), tmp_players.end());
 			tmp_players.push_back(player);
 			cid_type sui_cid = players_coalition<RealT>::make_id(tmp_players.begin(), tmp_players.end());
@@ -504,25 +543,25 @@ RealT shapley_value(cooperative_game<RealT> const& game, player_type player)
  * \f]
  */
 template <typename RealT>
-::std::map<player_type,RealT> shapley_value(cooperative_game<RealT> const& game)
+::std::map<pid_type,RealT> shapley_value(cooperative_game<RealT> const& game)
 {
 	const ::std::size_t n(game.num_players());
 	const RealT n_fact(::boost::math::factorial<RealT>(n));
 
-	::std::vector<player_type> players(game.players());
+	::std::vector<pid_type> players(game.players());
 
-	::std::map<player_type,RealT> sv_map;
+	::std::map<pid_type,RealT> sv_map;
 
-	::std::vector<player_type>::const_iterator players_end_it(players.end());
-	for (::std::vector<player_type>::const_iterator players_it = players.begin();
+	::std::vector<pid_type>::const_iterator players_end_it(players.end());
+	for (::std::vector<pid_type>::const_iterator players_it = players.begin();
 		 players_it != players_end_it;
 		 ++players_it)
 	{
-		player_type pid(*players_it);
+		pid_type pid(*players_it);
 
 		RealT sv(0);
 
-		::std::set<player_type> other_players(players.begin(), players.end());
+		::std::set<pid_type> other_players(players.begin(), players.end());
 		other_players.erase(pid);
 
 		if (other_players.size() > 0)
@@ -534,7 +573,7 @@ template <typename RealT>
 				const RealT s_fact(::boost::math::factorial<RealT>(s));
 				const RealT nmsm1_fact(::boost::math::factorial<RealT>(n-s-1));
 
-				::std::vector<player_type> tmp_players(subset(other_players.begin(), other_players.end()));
+				::std::vector<pid_type> tmp_players(subset(other_players.begin(), other_players.end()));
 				cid_type s_cid = players_coalition<RealT>::make_id(tmp_players.begin(), tmp_players.end());
 				tmp_players.push_back(pid);
 				const cid_type sui_cid = players_coalition<RealT>::make_id(tmp_players.begin(), tmp_players.end());
@@ -566,26 +605,26 @@ template <typename RealT>
  * \f]
  */
 template <typename RealT>
-::std::map<player_type,RealT> banzhaf_value(cooperative_game<RealT> const& game)
+::std::map<pid_type,RealT> banzhaf_value(cooperative_game<RealT> const& game)
 {
 	const ::std::size_t n(game.num_players());
 	const RealT prod(1.0/::std::pow(2, n-1));
 	//const RealT prod(1.0/(1 << (n-1)));
 
-	::std::vector<player_type> players(game.players());
+	::std::vector<pid_type> players(game.players());
 
-	::std::map<player_type,RealT> bv_map;
+	::std::map<pid_type,RealT> bv_map;
 
-	::std::vector<player_type>::const_iterator players_end_it(players.end());
-	for (::std::vector<player_type>::const_iterator players_it = players.begin();
+	::std::vector<pid_type>::const_iterator players_end_it(players.end());
+	for (::std::vector<pid_type>::const_iterator players_it = players.begin();
 		 players_it != players_end_it;
 		 ++players_it)
 	{
-		player_type player(*players_it);
+		pid_type player(*players_it);
 
 		RealT bv(0);
 
-		::std::set<player_type> other_players(players.begin(), players.end());
+		::std::set<pid_type> other_players(players.begin(), players.end());
 		other_players.erase(player);
 
 		if (other_players.size() > 0)
@@ -593,7 +632,7 @@ template <typename RealT>
 			::dcs::algorithm::lexicographic_subset subset(other_players.size(), true);
 			while (subset.has_next())
 			{
-				::std::vector<player_type> tmp_players(subset(other_players.begin(), other_players.end()));
+				::std::vector<pid_type> tmp_players(subset(other_players.begin(), other_players.end()));
 				cid_type s_cid = players_coalition<RealT>::make_id(tmp_players.begin(), tmp_players.end());
 				tmp_players.push_back(player);
 				cid_type sui_cid = players_coalition<RealT>::make_id(tmp_players.begin(), tmp_players.end());
@@ -631,15 +670,15 @@ template <typename RealT>
  * is the non-normalized Banzhaf value.
  */
 template <typename RealT>
-::std::map<player_type,RealT> norm_banzhaf_value(cooperative_game<RealT> const& game)
+::std::map<pid_type,RealT> norm_banzhaf_value(cooperative_game<RealT> const& game)
 {
-	::std::map<player_type,RealT> bv_map = banzhaf_value(game);
+	::std::map<pid_type,RealT> bv_map = banzhaf_value(game);
 
 	RealT den(0);
 	// Compute the sum of all non-normalized Banzhaf values
 	{
-		typename ::std::map<player_type,RealT>::const_iterator end_it(bv_map.end());
-		for (typename ::std::map<player_type,RealT>::const_iterator it = bv_map.begin();
+		typename ::std::map<pid_type,RealT>::const_iterator end_it(bv_map.end());
+		for (typename ::std::map<pid_type,RealT>::const_iterator it = bv_map.begin();
 			 it != end_it;
 			 ++it)
 		{
@@ -648,18 +687,18 @@ template <typename RealT>
 	}
 	// Normalize each Banzhaf value
 	{
-		::std::vector<player_type> players(game.players());
+		::std::vector<pid_type> players(game.players());
 		cid_type gc_cid = players_coalition<RealT>::make_id(players.begin(), players.end());
 		RealT v_gc = game.value(gc_cid);
-		typename ::std::map<player_type,RealT>::iterator end_it(bv_map.end());
-		for (typename ::std::map<player_type,RealT>::iterator it = bv_map.begin();
+		typename ::std::map<pid_type,RealT>::iterator end_it(bv_map.end());
+		for (typename ::std::map<pid_type,RealT>::iterator it = bv_map.begin();
 			 it != end_it;
 			 ++it)
 		{
 			it->second *= v_gc/den;
 		}
-//		typename ::std::map<player_type,RealT>::iterator end_it(bv_map.end());
-//		for (typename ::std::map<player_type,RealT>::iterator it = bv_map.begin();
+//		typename ::std::map<pid_type,RealT>::iterator end_it(bv_map.end());
+//		for (typename ::std::map<pid_type,RealT>::iterator it = bv_map.begin();
 //			 it != end_it;
 //			 ++it)
 //		{
@@ -688,20 +727,20 @@ template <typename RealT>
  * .
  */
 template <typename RealT>
-::std::map<player_type,RealT> aumann_dreze_value(cooperative_game<RealT> const& game)
+::std::map<pid_type,RealT> aumann_dreze_value(cooperative_game<RealT> const& game)
 {
 	const ::std::vector<cid_type> structure(game.coalition_structure());
 	const ::std::size_t nc(structure.size());
 
-	::std::map<player_type,RealT> ad_map;
+	::std::map<pid_type,RealT> ad_map;
 
 	for (::std::size_t i = 0; i < nc; ++i)
 	{
 		const cid_type cid(structure[i]);
 
-		const ::std::vector<player_type> players = game.coalition(cid).players();
+		const ::std::vector<pid_type> players = game.coalition(cid).players();
 
-		::std::map<player_type,RealT> sh_map = shapley_value(game.subgame(cid));
+		::std::map<pid_type,RealT> sh_map = shapley_value(game.subgame(cid));
 		ad_map.insert(sh_map.begin(), sh_map.end());
 	}
 
@@ -725,43 +764,43 @@ template <typename RealT>
  * .
  */
 template <typename RealT>
-::std::map<player_type,RealT> chi_value(cooperative_game<RealT> const& game)
+::std::map<pid_type,RealT> chi_value(cooperative_game<RealT> const& game)
 {
 	const ::std::vector<cid_type> structure(game.coalition_structure());
 	const ::std::size_t nc(structure.size());
-	const ::std::map<player_type,RealT> shapley_map(shapley_value(game));
+	const ::std::map<pid_type,RealT> shapley_map(shapley_value(game));
 
 	::std::map< ::std::size_t,RealT> coal_shapley_map;
 
 	for (::std::size_t i = 0; i < nc; ++i)
 	{
 		const cid_type cid = structure[i];
-		const ::std::vector<player_type> players = game.coalition(cid).players();
+		const ::std::vector<pid_type> players = game.coalition(cid).players();
 		const ::std::size_t np = players.size();
 
 		RealT sh(0);
 		for (::std::size_t j = 0; j < np; ++j)
 		{
-			const player_type pid(players[j]);
+			const pid_type pid(players[j]);
 
 			sh += shapley_map.at(pid);
 		}
 		coal_shapley_map[cid] = sh;
 	}
 
-	::std::map<player_type,RealT> chi_map;
+	::std::map<pid_type,RealT> chi_map;
 
 	for (::std::size_t i = 0; i < nc; ++i)
 	{
 		const cid_type cid = structure[i];
 		const players_coalition<RealT> coalition = game.coalition(cid);
-		const ::std::vector<player_type> players = coalition.players();
+		const ::std::vector<pid_type> players = coalition.players();
 		const ::std::size_t np = players.size();
 		const RealT add = (coalition.value()-coal_shapley_map.at(cid))/np;
 
 		for (::std::size_t j = 0; j < np; ++j)
 		{
-			const player_type pid(players[j]);
+			const pid_type pid(players[j]);
 
 			chi_map[pid] = shapley_map.at(pid)+add;
 		}
@@ -785,9 +824,9 @@ template <typename RealT>
  * .
  */
 template <typename RealT>
-//core<RealT> find_core(typename coalition<RealT>::cid_type const& cid, ::std::vector<player_type> const& players, ::std::map<cid_type,RealT> const& coalitions)
+//core<RealT> find_core(typename coalition<RealT>::cid_type const& cid, ::std::vector<pid_type> const& players, ::std::map<cid_type,RealT> const& coalitions)
 core<RealT> find_core(cooperative_game<RealT> const& game)
-//typename coalition<RealT>::cid_type const& cid, ::std::vector<player_type> const& players, ::std::map<cid_type,RealT> const& coalitions)
+//typename coalition<RealT>::cid_type const& cid, ::std::vector<pid_type> const& players, ::std::map<cid_type,RealT> const& coalitions)
 {
 	typedef RealT real_type;
 	typedef players_coalition<real_type> coalition_type;
@@ -796,8 +835,8 @@ core<RealT> find_core(cooperative_game<RealT> const& game)
 //	typedef IloArray<IloNumVarArray> var_matrix_type;
 	typedef typename ::dcs::algorithm::lexicographic_subset subset_type;
 	typedef typename subset_type::const_iterator subset_iterator;
-	typedef typename ::dcs::algorithm::subset_traits<player_type>::subset_container subset_container;
-//	typedef typename ::dcs::algorithm::subset_traits<player_type>::subset_container_const_iterator subset_container_iterator;
+	typedef typename ::dcs::algorithm::subset_traits<pid_type>::subset_container subset_container;
+//	typedef typename ::dcs::algorithm::subset_traits<pid_type>::subset_container_const_iterator subset_container_iterator;
 
 	core<real_type> kore;
 
@@ -812,7 +851,7 @@ core<RealT> find_core(cooperative_game<RealT> const& game)
 		model.setName("Core");
 
 		::std::size_t n(game.num_players());
-		::std::vector<player_type> players(game.players());
+		::std::vector<pid_type> players(game.players());
 
 		// Decision Variable
 
@@ -987,12 +1026,12 @@ bool belongs_to_core(cooperative_game<RealT> const& game, IterT first_payoff, It
 	//typedef typename coalition_type::cid_type cid_type;
 	typedef typename ::dcs::algorithm::lexicographic_subset subset_type;
 	//typedef typename subset_type::const_iterator subset_iterator;
-	typedef typename ::dcs::algorithm::subset_traits<player_type>::subset_container subset_container;
-	typedef typename ::dcs::algorithm::subset_traits<player_type>::subset_container_const_iterator subset_container_iterator;
+	typedef typename ::dcs::algorithm::subset_traits<pid_type>::subset_container subset_container;
+	typedef typename ::dcs::algorithm::subset_traits<pid_type>::subset_container_const_iterator subset_container_iterator;
 
-	::std::map<player_type,real_type> x(first_payoff, last_payoff);
+	::std::map<pid_type,real_type> x(first_payoff, last_payoff);
 	::std::size_t n(game.num_players());
-	::std::vector<player_type> players(game.players());
+	::std::vector<pid_type> players(game.players());
 
 	subset_type lex_subset(n, false);
 
@@ -1013,7 +1052,7 @@ bool belongs_to_core(cooperative_game<RealT> const& game, IterT first_payoff, It
 			 sub_it != sub_end_it;
 			 ++sub_it)
 		{
-			player_type player_num(*sub_it);
+			pid_type player_num(*sub_it);
 
 			xs += x[player_num];
 		}
