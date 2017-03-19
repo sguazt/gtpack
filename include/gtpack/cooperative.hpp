@@ -52,12 +52,76 @@
 namespace gtpack {
 
 typedef unsigned int pid_type;
-typedef pid_type player_type; // Deprecated
+typedef pid_type player_type; //XXX: DEPRECATED
 typedef unsigned long cid_type;
 
 
-static const cid_type empty_coalition_id(0);
+static const cid_type empty_cid = 0;
+static const cid_type empty_coalition_id = empty_cid; //XXX: DEPRECATED
 
+/// Returns the identifier of the singleton coalition for the given player
+inline
+cid_type make_coalition_id(pid_type pid)
+{
+	const cid_type one = 1;
+
+	return one << pid;
+}
+
+/// Returns the identifier of the coalition for the given players
+template <typename IterT>
+cid_type make_coalition_id(IterT first_player, IterT last_player)
+{
+	// Each coalition $S\subseteq\{1,2,...,N\}$ can be characterized
+	// uniquely by the $\sum_{i \in S}{2^{i-1}}$, which is the sum of
+	// integers associated to players belonging to a particular coalition.
+
+	const cid_type one = 1;
+
+	cid_type cid = 0;
+
+	while (first_player != last_player)
+	{
+		const pid_type pid = *first_player;
+
+		// Update only if the player in not already member of this coalition
+		if (!(cid & (one << pid)))
+		{
+			cid += one << pid;
+		}
+
+		++first_player;
+	}
+
+	return cid;
+}
+
+/// Returns the identifier of the grand coalition for \a n players
+inline
+cid_type make_grand_coalition_id(std::size_t n)
+{
+	if (n == 0)
+	{
+		return empty_cid;
+	}
+
+	const std::size_t nb = sizeof(cid_type)*8; // # bits in cid_type
+	return ~static_cast<cid_type>(0) >> (nb-n);
+}
+
+/// Returns the identifier of the complement of a given coalition
+inline
+cid_type make_complement_coalition_id(std::size_t n, cid_type cid)
+{
+    return make_grand_coalition_id(n) - cid;
+}
+
+/// Returns the identifier of the complement of a coalition for the given players
+template <typename IterT>
+cid_type make_complement_coalition_id(std::size_t n, IterT first_player, IterT last_player)
+{
+	return make_complement_coalition_id(n, make_coalition_id(first_player, last_player));
+}
 
 template <typename RealT>
 struct characteristic_function
