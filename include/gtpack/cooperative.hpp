@@ -55,7 +55,6 @@ typedef unsigned int pid_type;
 typedef pid_type player_type; //XXX: DEPRECATED
 typedef unsigned long cid_type;
 
-
 static const cid_type empty_cid = 0;
 static const cid_type empty_coalition_id = empty_cid; //XXX: DEPRECATED
 
@@ -486,9 +485,13 @@ class cooperative_game
 		}
 	}
 
-	public: ::std::vector<cid_type> coalition_structure() const
+//	public: ::std::vector<cid_type> coalition_structure() const
+//	{
+//		return ::std::vector<cid_type>(coal_struc_.begin(), coal_struc_.end());
+//	}
+	public: ::std::set<cid_type> coalition_structure() const
 	{
-		return ::std::vector<cid_type>(coal_struc_.begin(), coal_struc_.end());
+		return coal_struc_;
 	}
 
 	public: template <typename PlayerIterT>
